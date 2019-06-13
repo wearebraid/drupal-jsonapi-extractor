@@ -1,5 +1,7 @@
 # Drupal JSON:API Extractor
 
+[![CircleCI](https://circleci.com/gh/wearebraid/drupal-jsonapi-extractor.svg?style=svg)](https://circleci.com/gh/wearebraid/drupal-jsonapi-extractor)
+
 This package is a Drupal [json:api](https://www.drupal.org/project/jsonapi)
 client library with one primary responsibility - to crawl through a Drupal
 produced json:api and save the resulting data to static json files in
