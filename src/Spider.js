@@ -14,7 +14,7 @@ class Spider extends BaseEmitter {
     }
     this.api = config.api || axios.create({
       baseURL: config.baseURL,
-      timeout: 3000,
+      timeout: 10000,
       headers: {
         'Accept': 'application/vnd.api+json'
       }
@@ -22,12 +22,25 @@ class Spider extends BaseEmitter {
     this.registry = {}
     this.errors = {}
     this.pending = new Set()
+    this.config = config
     this.resourceConfig = Object.assign({
       relationships: [
         new RegExp(/^field_/)
       ]
     }, config.resourceConfig)
     this.observe('crawl-error', 'crawl-depth-complete', this.isComplete.bind(this))
+  }
+
+  /**
+   * Crawl and download all available nodes.
+   */
+  async crawlNodes () {
+    let res = await this.api.get('/node_type/node_type')
+    if (res.data && res.data.data) {
+      res.data.data.map(ct => ct.attributes.drupal_internal__type).map(t => this.crawl(`/node/${t}`))
+    } else {
+      this.emit('crawl-error', { message: 'No content types found.' })
+    }
   }
 
   /**
@@ -50,6 +63,10 @@ class Spider extends BaseEmitter {
         this.pending.delete(path)
         this.errors[path] = err
         this.emit('crawl-error', { path, err })
+        if (this.config.terminateOnError) {
+          console.log(err)
+          process.exit(1)
+        }
       }
     }
   }
@@ -102,7 +119,7 @@ class Spider extends BaseEmitter {
    */
   isComplete () {
     if (this.pending.size === 0) {
-      setTimeout(() => this.emit('crawl-complete', {}), 5)
+      setTimeout(() => this.emit('crawl-complete', {}), 1000)
     }
   }
 

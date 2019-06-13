@@ -44,8 +44,11 @@ const baseURL = 'https://example.org/jsonapi/'
 const spider = new Spider({ baseURL })
 const extractor = new Extractor(spider, { location: './downloads' })
 
-spider.crawl('/node/content-type')
+extractor.wipe().then(() => spider.crawl('/node/content-type'))
 ```
+
+> Note: The extractor has a helpful utility function `wipe()` which will returns a
+> `Promise` and ensures the target directory is completely empty before resolving.
 
 The above code will output a new `downloads` directory with the structure:
 
@@ -126,6 +129,9 @@ new Spider(options)
   // (optional) Instance of axios with baseURL already applied
   api: axios,
 
+  // Quite the program on a crawl error
+  terminateOnError: false,
+
   // (optional) Resource class configuration options
   resourceConfig: {
     // (optional) Array of regex that is used to determine which relationships should be crawled
@@ -142,19 +148,23 @@ new Spider(options)
 You pass options as the second argument when instantiating a new `Extractor`.
 
 ```js
-new Extractor(spider, options)
+const extractor = new Extractor(spider, options)
+extractor.wipe().then(() => spider.crawlNodes())
 ```
+
+> Note: above we use a helpful utility method `wipe()` which will returns a
+> `Promise` and ensures the target directory is completely empty before resolving.
 
 ```js
 {
   // The location to save files (will create directories automatically)
   location: './',
-  
-  // Should the above location be recursively deleted before saving?
-  wipe: false,
 
   // Should the data be transformed or "cleaned" before being saved to disk?
   clean: false,
+
+  // Sometimes it's helpful to see pretty-printed json, just flip this to true.
+  pretty: false,
 
   // The function to pass each Resource through before saving it if clean is true
   // By default we use our own transform function, this function takes a number of
@@ -204,7 +214,6 @@ const spider = new Spider({ baseURL })
 const extractor = new Extractor(spider, {
   location: './downloads'
   clean: true,
-  wipe: true,
   transformer: transformer({
     attributeFilters: [
       /^custom_attribute_to_keep$/
@@ -214,6 +223,18 @@ const extractor = new Extractor(spider, {
 
 spider.crawl('/node/content-type')
 ```
+
+## Logger
+
+The logger, at the moment, is pretty simple with just one configuration option:
+
+```js
+new Logger([...emitters], {
+  // Log every event by name and path
+  verbose: false
+})
+```
+
 ## To do
 
 Currently there is effectively no test coverage, although test files for the

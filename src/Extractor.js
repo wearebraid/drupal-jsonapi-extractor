@@ -14,8 +14,8 @@ class Extractor extends BaseEmitter {
     super()
     this.config = Object.assign({
       location: './',
-      wipe: false,
       clean: false,
+      pretty: false,
       transformer: transformer()
     }, config)
     this.emitter = emitter
@@ -23,16 +23,21 @@ class Extractor extends BaseEmitter {
   }
 
   /**
+   * Remove the final location directory.
+   * @return Extractor
+   */
+  async wipe () {
+    await (new Promise(resolve => rimraf(this.config.location, err => {
+      if (err) throw err
+      resolve()
+    })))
+  }
+
+  /**
    * Save a given resource to the file system.
    * @param {object} event
    */
   async saveResource ({ resource }) {
-    if (!this.hasHandledEvent) {
-      this.hasHandledEvent = true
-      if (this.config.wipe) {
-        await (new Promise(resolve => rimraf(this.config.location, () => resolve())))
-      }
-    }
     const transformedData = this.config.clean && typeof this.config.transformer === 'function' ? this.config.transformer(resource) : false
     resource.setTransformedData(transformedData)
     if (resource.entity() === 'node') {
@@ -46,11 +51,11 @@ class Extractor extends BaseEmitter {
    * @param {Resource} resource
    */
   storeResource (resource) {
-    const resourceDir = this.config.location + '/_resources/' + path.dirname(resource.path())
+    const resourceDir = this.config.location + '/_resources' + path.dirname(resource.path())
     const resourceFile = resourceDir + '/' + path.basename(resource.path()) + '.json'
     fs.mkdir(resourceDir, { recursive: true }, (err) => {
       if (err) throw err
-      fs.writeFile(resourceFile, JSON.stringify(resource.transformedData(), null, 2), () => {
+      fs.writeFile(resourceFile, JSON.stringify(resource.transformedData(), null, this.config.pretty ? 2 : null), () => {
         this.emit('resource-saved', { path: path.basename(resourceFile), resource })
       })
     })
@@ -61,7 +66,7 @@ class Extractor extends BaseEmitter {
    * @param {Resource} resource
    */
   storeNode (resource, slugPath) {
-    const aliasDir = this.config.location + '/_slugs/' + path.dirname(slugPath)
+    const aliasDir = this.config.location + '/_slugs' + path.dirname(slugPath)
     const aliasFile = aliasDir + '/' + path.basename(slugPath) + '.json'
 
     fs.mkdir(aliasDir, { recursive: true }, (err) => {
