@@ -30,7 +30,7 @@ const { Spider } = require('drupal-jsonapi-extractor')
 const baseURL = 'https://example.org/jsonapi/'
 const spider = new Spider({ baseURL })
 
-spider.crawl('/node/blog)
+spider.crawl('/node/blog')
 ```
 While the above `Spider` does crawl through an entire set of content types it does
 not actually do anything with the results. This is where we introduce the
@@ -43,7 +43,7 @@ const baseURL = 'https://example.org/jsonapi/'
 const spider = new Spider({ baseURL })
 const extractor = new Extractor(spider, { location: './downloads' })
 
-spider.crawl('/node/content-type)
+spider.crawl('/node/content-type')
 ```
 
 The above code will output a new `downloads` directory with the structure:
@@ -94,7 +94,7 @@ const spider = new Spider({ baseURL })
 const extractor = new Extractor(spider, { location: './downloads' })
 const logger = new Logger([spider, extractor])
 
-spider.crawl('/node/content-type)
+spider.crawl('/node/content-type')
 ```
 The logger in our example would print to the command line:
 
@@ -211,7 +211,7 @@ const extractor = new Extractor(spider, {
   })
 })
 
-spider.crawl('/node/content-type)
+spider.crawl('/node/content-type')
 ```
 ## To do
 
