@@ -32,6 +32,8 @@ const baseURL = 'https://example.org/jsonapi/'
 const spider = new Spider({ baseURL })
 
 spider.crawl('/node/blog')
+// or to crawl every published node
+spider.crawlNodes()
 ```
 While the above `Spider` does crawl through an entire set of content types it does
 not actually do anything with the results. This is where we introduce the
