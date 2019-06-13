@@ -1,6 +1,6 @@
 {
   "name": "drupal-jsonapi-extractor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Library to extract, transform, and download an entire Drupal json:api graph.",
   "main": "main.js",
   "scripts": {
