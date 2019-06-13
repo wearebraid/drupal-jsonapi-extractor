@@ -1,6 +1,7 @@
 # Drupal JSON:API Extractor
 
 [![CircleCI](https://circleci.com/gh/wearebraid/drupal-jsonapi-extractor.svg?style=svg)](https://circleci.com/gh/wearebraid/drupal-jsonapi-extractor)
+![node](https://img.shields.io/node/v/drupal-jsonapi-extractor.svg)
 
 This package is a Drupal [json:api](https://www.drupal.org/project/jsonapi)
 client library with one primary responsibility - to crawl through a Drupal
