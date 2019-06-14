@@ -80,7 +80,7 @@ function cleanProperties (resource) {
 /**
  * Extend the default configuration
  */
-function extendDefaultConfig (config) {
+function extendDefaultConfig (config, spider) {
   const defaultConfig = {
     attributeFilters,
     relationshipFilters,

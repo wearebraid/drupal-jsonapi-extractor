@@ -3,11 +3,12 @@ class Resource {
    * Model representing the response from a standard JSON:API
    * @param {object} res
    */
-  constructor (raw, config) {
+  constructor (raw, spider, config) {
     this.raw = raw
     this.data = this.getData(raw)
     this.self = this.raw.links.self.href
     this.config = config
+    this.spider = spider
 
     // Internal "private" properties
     this._path = false
@@ -17,6 +18,7 @@ class Resource {
     this._transformedFields = false
     this._transformed = false
     this._transformerConfig = {}
+    this._relationshipCrawlers = false
     this._relationships = this.isResource() ? (this.data.relationships || {}) : {}
     this._attributes = this.isResource() ? (this.data.attributes || {}) : {}
   }
@@ -92,7 +94,7 @@ class Resource {
    */
   id () {
     if (!this._id && !this.isCollection()) {
-      const key = Object.keys(this.data.attributes).find(k => /^drupal_internal__[nt]?id/.test(k))
+      const key = Object.keys(this.data.attributes).find(k => /^drupal_internal__[ntfm]?id/.test(k))
       this._id = this.data.attributes[key]
     }
     return this._id
@@ -160,7 +162,7 @@ class Resource {
   resources () {
     if (this.isCollection()) {
       if (!this._resources) {
-        this._resources = this.data.map(resource => new Resource(resource, this.config))
+        this._resources = this.data.map(resource => new Resource(resource, this.spider, this.config))
       }
       return this._resources
     }
@@ -173,6 +175,26 @@ class Resource {
    */
   relationships () {
     return this._relationships
+  }
+
+  /**
+   * Sets an internal promise that resolves when all pending relationships
+   * have been crawled (not necessarily output)
+   * @param {Promise} crawlPromise
+   * @return {Resource}
+   */
+  setRelationshipCrawlers (crawlPromise) {
+    this._relationshipCrawlers = crawlPromise
+    return this
+  }
+
+  /**
+   * The relationship crawlers promise that should resolve when all of this
+   * resource's relationships are loaded.
+   * @return {Promise}
+   */
+  relationshipCrawlers () {
+    return this._relationshipCrawlers
   }
 
   /**
@@ -189,12 +211,31 @@ class Resource {
    */
   relationshipUrls () {
     if (!this.isCollection()) {
-      return Object.keys(this._relationships)
-        .filter(r => this.config.relationships.some(p => p.test(r)))
-        .map(r => this.relativeUrl(this._relationships[r], false))
-        .filter(path => !!path)
+      const urls = [...this.parseRelationshipUrls(
+        Object.keys(this._relationships)
+          .filter(k => this.config.relationships.some(r => r.test(k)))
+          .map(k => this._relationships[k])
+      )]
+      return urls
     }
     return []
+  }
+
+  /**
+   * Given an array or object, recursively seek out all relationship.
+   * @param {array|object} set
+   * @return {Set}
+   */
+  parseRelationshipUrls (items) {
+    const isRelationship = i => typeof i === 'object' && i && !Array.isArray(i) && i.type && i.id && i.type.indexOf('--') > 1
+    if (isRelationship(items)) {
+      return new Set([this.dataToUrl(items)])
+    }
+    if (typeof items === 'object' && !!items) {
+      items = (!Array.isArray(items)) ? Object.values(items) : items
+      return items.reduce((set, item) => new Set([...set, ...this.parseRelationshipUrls(item)]), new Set())
+    }
+    return new Set()
   }
 
   /**
