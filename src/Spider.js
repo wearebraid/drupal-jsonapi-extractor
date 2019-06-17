@@ -1,5 +1,6 @@
 const Resource = require('./Resource')
 const BaseEmitter = require('./BaseEmitter')
+const Queue = require('./Queue')
 const axios = require('axios')
 
 class Spider extends BaseEmitter {
@@ -14,30 +15,31 @@ class Spider extends BaseEmitter {
     }
     this.api = config.api || axios.create({
       baseURL: config.baseURL,
-      timeout: 10000,
+      timeout: 5000,
       headers: {
         'Accept': 'application/vnd.api+json'
       }
     })
     this.registry = {}
     this.errors = {}
-    this.pending = new Set()
-    this.config = config
+    this.pendingPaths = new Set()
+    this.config = Object.assign({ maxConcurrent: 5 }, config)
+    this.queue = new Queue(this.config.maxConcurrent)
     this.resourceConfig = Object.assign({
       relationships: [
         new RegExp(/^field_/)
       ]
     }, config.resourceConfig)
-    this.observe('crawl-error', 'crawl-depth-complete', this.isComplete.bind(this))
+    process.on('exit', this.isComplete.bind(this))
   }
 
   /**
    * Crawl and download all available nodes.
    */
-  async crawlNodes () {
+  async crawlNodes (depth = Infinity) {
     let res = await this.api.get('/node_type/node_type')
     if (res.data && res.data.data) {
-      res.data.data.map(ct => ct.attributes.drupal_internal__type).map(t => this.crawl(`/node/${t}`))
+      res.data.data.map(ct => ct.attributes.drupal_internal__type).map(t => this.crawl(`/node/${t}`, depth))
     } else {
       this.emit('crawl-error', { message: 'No content types found.' })
     }
@@ -47,28 +49,32 @@ class Spider extends BaseEmitter {
    * Fetch a particular path to the api.
    * @param {string}  path
    * @param {boolean} relationships
+   * @return {Resource}
    */
   async crawl (path, depth = Infinity) {
     if (!this.hasBeenTraversed(path)) {
       try {
-        const req = this.api.get(path)
-        this.pending.add(path)
+        const req = this.queueApiRequests(path)
         this.emit('crawl-started', { path, req })
-        const resource = new Resource((await req).data, this.resourceConfig)
+        const resource = new Resource((await req).data, this, this.resourceConfig)
         this.emit('crawl-resource-complete', { path, res: resource.raw })
-        this.register(resource, path, depth).downloadRelationships(path, depth)
-        this.pending.delete(path)
-        this.emit('crawl-depth-complete', { path, res: resource.raw, depth })
+        this.register(resource, path, depth)
+        this.emit('crawl-depth-complete', { path, resource, depth })
+        return resource
       } catch (err) {
-        this.pending.delete(path)
-        this.errors[path] = err
-        this.emit('crawl-error', { path, err })
-        if (this.config.terminateOnError) {
-          console.log(err)
-          process.exit(1)
-        }
+        return this.handleError(err)
       }
     }
+  }
+
+  async handleError (err, path) {
+    this.errors[path] = err
+    this.emit('crawl-error', { path, err })
+    if (this.config.terminateOnError) {
+      console.log(err)
+      process.exit(1)
+    }
+    return false
   }
 
   /**
@@ -82,9 +88,10 @@ class Spider extends BaseEmitter {
     if (!this.registry[p]) {
       this.registry[p] = resource
       if (!resource.isCollection()) {
+        resource.setRelationshipCrawlers(this.crawlRelationships(path, depth))
         this.emit('resource-loaded', { path: p, resource })
       } else {
-        resource.resources().map(r => this.register(r))
+        resource.resources().map(r => this.register(r, r.path(), depth))
         if (resource.hasNextPage()) {
           this.crawl(resource.nextPageUrl(), depth)
         }
@@ -94,13 +101,40 @@ class Spider extends BaseEmitter {
   }
 
   /**
+   * Queue an api requests and promise it's resolution.
+   * @param {string} path
+   * @return {Spider}
+   */
+  queueApiRequests (path) {
+    this.pendingPaths.add(path)
+    return new Promise((resolve, reject) => {
+      this.queue.add(async () => {
+        try {
+          const res = await this.api.get(path)
+          resolve(res)
+        } catch (err) {
+          this.handleError(err, path)
+        }
+      })
+    })
+  }
+
+  /**
    * Given a particular path, parse any relevant relationships.
    * @param {string} path
+   * @param {integer} depth
+   * @return {Promise}
    */
-  downloadRelationships (path, depth) {
+  crawlRelationships (path, depth) {
     if (this.registry[path] && depth > 1) {
-      this.relationshipUrls(this.registry[path]).map(path => this.crawl(path, depth - 1))
+      const resource = this.registry[path]
+      return Promise.all(
+        this.relationshipUrls(resource)
+          .map(path => this.crawl(path, depth - 1))
+          .filter(p => !!p)
+      )
     }
+    return Promise.resolve()
   }
 
   /**
@@ -118,9 +152,7 @@ class Spider extends BaseEmitter {
    * When the pending set is empty the crawling is complete.
    */
   isComplete () {
-    if (this.pending.size === 0) {
-      setTimeout(() => this.emit('crawl-complete', {}), 1000)
-    }
+    this.emit('crawl-complete', {})
   }
 
   /**
@@ -128,7 +160,7 @@ class Spider extends BaseEmitter {
    * @param {string} path
    */
   hasBeenTraversed (path) {
-    return this.pending.has(path) || this.hasOwnProperty(path) || this.errors.hasOwnProperty(path)
+    return this.pendingPaths.has(path) || this.hasOwnProperty(path) || this.errors.hasOwnProperty(path)
   }
 }
 

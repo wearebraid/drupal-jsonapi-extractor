@@ -108,7 +108,12 @@ The logger in our example would print to the command line:
 ✔️  node: 1
 ✔️  taxonomy_term: 1
 ✔️  paragraph: 1
+----------------------------
 🎉   Crawl complete!
+Errors.................0
+node...................1
+paragraph..............1
+taxonomy_term..........1
 ```
 
 ## Configuration options
@@ -134,6 +139,10 @@ new Spider(options)
   // Quite the program on a crawl error
   terminateOnError: false,
 
+  // What is the maximum number of concurrent api requests the spider can open.
+  // you get timeout errors from the api, reduce this number.
+  maxConcurrent: 5,
+
   // (optional) Resource class configuration options
   resourceConfig: {
     // (optional) Array of regex that is used to determine which relationships should be crawled
@@ -152,6 +161,9 @@ You pass options as the second argument when instantiating a new `Extractor`.
 ```js
 const extractor = new Extractor(spider, options)
 extractor.wipe().then(() => spider.crawlNodes())
+// To limit the depth of a crawl, pass a max depth (rarely needed since the
+// package handles recursive references)
+extractor.wipe().then(() => spider.crawlNodes(5))
 ```
 
 > Note: above we use a helpful utility method `wipe()` which will returns a
@@ -232,8 +244,12 @@ The logger, at the moment, is pretty simple with just one configuration option:
 
 ```js
 new Logger([...emitters], {
-  // Log every event by name and path
-  verbose: false
+  // Set the verbosity of the logger:
+  // 0 - Log nothing
+  // 1 - (default) Show a simple tally of number of downloads and number of errors
+  // 2 - Log each entity and error as its downloading
+  // 3 - Log every event being listened to by the logger
+  verbosity: 1
 })
 ```
 

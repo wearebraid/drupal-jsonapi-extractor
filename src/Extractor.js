@@ -10,7 +10,7 @@ class Extractor extends BaseEmitter {
    * files in the local filesystem.
    * @param {string} location
    */
-  constructor (emitter, config) {
+  constructor (spider, config) {
     super()
     this.config = Object.assign({
       location: './',
@@ -18,8 +18,8 @@ class Extractor extends BaseEmitter {
       pretty: false,
       transformer: transformer()
     }, config)
-    this.emitter = emitter
-    this.emitter.observe('resource-loaded', this.saveResource.bind(this))
+    this.spider = spider
+    this.spider.observe('resource-loaded', this.saveResource.bind(this))
   }
 
   /**
@@ -38,7 +38,9 @@ class Extractor extends BaseEmitter {
    * @param {object} event
    */
   async saveResource ({ resource }) {
-    const transformedData = this.config.clean && typeof this.config.transformer === 'function' ? this.config.transformer(resource) : false
+    await resource.relationshipCrawlers()
+    const shouldTransform = this.config.clean && typeof this.config.transformer === 'function'
+    const transformedData = shouldTransform ? this.config.transformer(resource) : false
     resource.setTransformedData(transformedData)
     if (resource.entity() === 'node') {
       resource.slugPaths().map(path => this.storeNode(resource, path))
