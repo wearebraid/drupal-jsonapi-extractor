@@ -22,17 +22,19 @@ class Queue {
   next () {
     if (this.pending.size < this.maxConcurrent) {
       const item = this.queue.shift()
-      const willComplete = item()
-      this.pending.add(willComplete)
-      willComplete
-        .then(() => {
-          this.pending.delete(willComplete)
-          this.next()
-        })
-        .catch((err) => {
-          this.pending.delete(willComplete)
-          throw err
-        })
+      if (item) {
+        const willComplete = item()
+        this.pending.add(willComplete)
+        willComplete
+          .then(() => {
+            this.pending.delete(willComplete)
+            this.next()
+          })
+          .catch((err) => {
+            this.pending.delete(willComplete)
+            throw err
+          })
+      }
     }
   }
 }

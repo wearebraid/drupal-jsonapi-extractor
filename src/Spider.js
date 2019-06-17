@@ -15,7 +15,7 @@ class Spider extends BaseEmitter {
     }
     this.api = config.api || axios.create({
       baseURL: config.baseURL,
-      timeout: 20000,
+      timeout: 5000,
       headers: {
         'Accept': 'application/vnd.api+json'
       }
@@ -23,23 +23,23 @@ class Spider extends BaseEmitter {
     this.registry = {}
     this.errors = {}
     this.pendingPaths = new Set()
-    this.config = Object.assign({ maxConcurrent: 2 }, config)
+    this.config = Object.assign({ maxConcurrent: 5 }, config)
     this.queue = new Queue(this.config.maxConcurrent)
     this.resourceConfig = Object.assign({
       relationships: [
         new RegExp(/^field_/)
       ]
     }, config.resourceConfig)
-    this.observe('crawl-error', 'crawl-depth-complete', this.isComplete.bind(this))
+    process.on('exit', this.isComplete.bind(this))
   }
 
   /**
    * Crawl and download all available nodes.
    */
-  async crawlNodes () {
+  async crawlNodes (depth = Infinity) {
     let res = await this.api.get('/node_type/node_type')
     if (res.data && res.data.data) {
-      res.data.data.map(ct => ct.attributes.drupal_internal__type).map(t => this.crawl(`/node/${t}`))
+      res.data.data.map(ct => ct.attributes.drupal_internal__type).map(t => this.crawl(`/node/${t}`, depth))
     } else {
       this.emit('crawl-error', { message: 'No content types found.' })
     }
@@ -62,15 +62,19 @@ class Spider extends BaseEmitter {
         this.emit('crawl-depth-complete', { path, resource, depth })
         return resource
       } catch (err) {
-        this.errors[path] = err
-        this.emit('crawl-error', { path, err })
-        if (this.config.terminateOnError) {
-          console.log(err)
-          process.exit(1)
-        }
-        return false
+        return this.handleError(err)
       }
     }
+  }
+
+  async handleError (err, path) {
+    this.errors[path] = err
+    this.emit('crawl-error', { path, err })
+    if (this.config.terminateOnError) {
+      console.log(err)
+      process.exit(1)
+    }
+    return false
   }
 
   /**
@@ -83,7 +87,6 @@ class Spider extends BaseEmitter {
     const p = path || resource.path()
     if (!this.registry[p]) {
       this.registry[p] = resource
-      this.pendingPaths.delete(path)
       if (!resource.isCollection()) {
         resource.setRelationshipCrawlers(this.crawlRelationships(path, depth))
         this.emit('resource-loaded', { path: p, resource })
@@ -105,14 +108,14 @@ class Spider extends BaseEmitter {
   queueApiRequests (path) {
     this.pendingPaths.add(path)
     return new Promise((resolve, reject) => {
-      try {
-        this.queue.add(async () => {
+      this.queue.add(async () => {
+        try {
           const res = await this.api.get(path)
           resolve(res)
-        })
-      } catch (err) {
-        reject(err)
-      }
+        } catch (err) {
+          this.handleError(err, path)
+        }
+      })
     })
   }
 
@@ -149,9 +152,7 @@ class Spider extends BaseEmitter {
    * When the pending set is empty the crawling is complete.
    */
   isComplete () {
-    if (this.pendingPaths.size === 0) {
-      setTimeout(() => this.emit('crawl-complete', {}), 1000)
-    }
+    this.emit('crawl-complete', {})
   }
 
   /**
