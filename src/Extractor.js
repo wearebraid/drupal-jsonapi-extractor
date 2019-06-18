@@ -54,7 +54,7 @@ class Extractor extends BaseEmitter {
    */
   storeResource (resource) {
     const resourceDir = this.config.location + '/_resources' + path.dirname(resource.path())
-    const resourceFile = resourceDir + '/' + path.basename(resource.path()) + '.json'
+    const resourceFile = resourceDir + '/' + (path.basename(resource.path()) || 'index') + '.json'
     fs.mkdir(resourceDir, { recursive: true }, (err) => {
       if (err) throw err
       fs.writeFile(resourceFile, JSON.stringify(resource.transformedData(), null, this.config.pretty ? 2 : null), () => {
@@ -69,7 +69,7 @@ class Extractor extends BaseEmitter {
    */
   storeNode (resource, slugPath) {
     const aliasDir = this.config.location + '/_slugs' + path.dirname(slugPath)
-    const aliasFile = aliasDir + '/' + path.basename(slugPath) + '.json'
+    const aliasFile = aliasDir + '/' + (path.basename(slugPath) || 'index') + '.json'
 
     fs.mkdir(aliasDir, { recursive: true }, (err) => {
       if (err) throw err
