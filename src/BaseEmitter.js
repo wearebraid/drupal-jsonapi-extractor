@@ -31,7 +31,7 @@ class BaseEmitter {
   observe () {
     const args = Array.from(arguments)
     if (typeof args[args.length - 1] !== 'function') {
-      throw new Error(`Last argument of listen must be a callback function, ${typeof args[args.length - 1]} given.`)
+      throw new Error(`Last argument of observe must be a callback function, ${typeof args[args.length - 1]} given.`)
     }
     const callback = args.pop()
     args.length || args.push('*')

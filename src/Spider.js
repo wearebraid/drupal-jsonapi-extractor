@@ -30,7 +30,7 @@ class Spider extends BaseEmitter {
         new RegExp(/^field_/)
       ]
     }, config.resourceConfig)
-    process.on('exit', this.isComplete.bind(this))
+    this.observe('crawl-error', 'crawl-depth-complete', this.isComplete.bind(this))
   }
 
   /**
@@ -69,6 +69,7 @@ class Spider extends BaseEmitter {
 
   async handleError (err, path) {
     this.errors[path] = err
+    this.pendingPaths.delete(path)
     this.emit('crawl-error', { path, err })
     if (this.config.terminateOnError) {
       console.log(err)
@@ -87,6 +88,7 @@ class Spider extends BaseEmitter {
     const p = path || resource.path()
     if (!this.registry[p]) {
       this.registry[p] = resource
+      this.pendingPaths.delete(path)
       if (!resource.isCollection()) {
         resource.setRelationshipCrawlers(this.crawlRelationships(path, depth))
         this.emit('resource-loaded', { path: p, resource })
@@ -97,6 +99,7 @@ class Spider extends BaseEmitter {
         }
       }
     }
+    this.pendingPaths.delete(path)
     return this
   }
 
@@ -152,7 +155,9 @@ class Spider extends BaseEmitter {
    * When the pending set is empty the crawling is complete.
    */
   isComplete () {
-    this.emit('crawl-complete', {})
+    if (this.pendingPaths.size < 1) {
+      setTimeout(() => this.emit('crawl-complete', {}), 100)
+    }
   }
 
   /**
@@ -160,7 +165,7 @@ class Spider extends BaseEmitter {
    * @param {string} path
    */
   hasBeenTraversed (path) {
-    return this.pendingPaths.has(path) || this.hasOwnProperty(path) || this.errors.hasOwnProperty(path)
+    return this.pendingPaths.has(path) || this.registry.hasOwnProperty(path) || this.errors.hasOwnProperty(path)
   }
 }
 
