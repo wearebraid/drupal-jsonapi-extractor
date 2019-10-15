@@ -73,7 +73,7 @@ class Extractor extends BaseEmitter {
 
     fs.mkdir(aliasDir, { recursive: true }, (err) => {
       if (err) throw err
-      fs.writeFile(aliasFile, JSON.stringify(resource.transformedData(), null, 2), () => {
+      fs.writeFile(aliasFile, JSON.stringify(resource.transformedData(), null, this.config.pretty ? 2 : null), () => {
         this.emit('resource-slug-saved', { path: path.basename(aliasFile), resource })
       })
     })
