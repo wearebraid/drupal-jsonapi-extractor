@@ -162,6 +162,7 @@ class Resource {
   resources () {
     if (this.isCollection()) {
       if (!this._resources) {
+        this.spider.emit('collection-index', { collection: this })
         this._resources = this.data.map(resource => new Resource(resource, this.spider, this.config))
       }
       return this._resources

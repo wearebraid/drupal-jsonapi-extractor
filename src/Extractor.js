@@ -19,6 +19,7 @@ class Extractor extends BaseEmitter {
       transformer: transformer()
     }, config)
     this.spider = spider
+    this.spider.observe('collection-index', this.storeCollectionIndex.bind(this))
     this.spider.observe('resource-loaded', this.saveResource.bind(this))
   }
 
@@ -46,6 +47,21 @@ class Extractor extends BaseEmitter {
       resource.slugPaths().map(path => this.storeNode(resource, path))
     }
     this.storeResource(resource)
+  }
+
+  /**
+   * Save a given collection index to the file system.
+   * @param {object} event
+   */
+  async storeCollectionIndex ({ collection }) {
+    const collectionDir = this.config.location + '/_resources' + collection.path()
+    const collectionIndex = collectionDir + '/' + 'index.json'
+    fs.mkdir(collectionDir, { recursive: true }, (err) => {
+      if (err) throw err
+      fs.writeFile(collectionIndex, JSON.stringify(collection.raw, null, this.config.pretty ? 2 : null), () => {
+        this.emit('collection-saved', { path: path.basename(collectionIndex), collection })
+      })
+    })
   }
 
   /**

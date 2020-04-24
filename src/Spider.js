@@ -23,7 +23,7 @@ class Spider extends BaseEmitter {
     this.registry = {}
     this.errors = {}
     this.pendingPaths = new Set()
-    this.config = Object.assign({ maxConcurrent: 5 }, config)
+    this.config = Object.assign({ maxConcurrent: 3 }, config)
     this.queue = new Queue(this.config.maxConcurrent)
     this.resourceConfig = Object.assign({
       relationships: [
