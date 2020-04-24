@@ -16,7 +16,7 @@ class Extractor extends BaseEmitter {
       location: './',
       clean: false,
       pretty: false,
-      transformer: transformer()
+      transformer: false
     }, config)
     this.spider = spider
     this.spider.observe('collection-index', this.storeCollectionIndex.bind(this))
