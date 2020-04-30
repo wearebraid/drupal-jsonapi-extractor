@@ -22,7 +22,8 @@ class Logger {
         'crawl-started': false,
         'crawl-depth-complete': false,
         'resource-slug-saved': false,
-        'resource-saved': '\x1b[32m✔️\x1b[0m'
+        'resource-saved': '\x1b[32m✔️\x1b[0m',
+        'collection-saved': '\x1b[32m📁\x1b[0m'
       }, this.config.map || {})
     } else {
       this.map = {}
@@ -85,6 +86,20 @@ class Logger {
       this.logs.resources[entity] = [resource]
     }
     const line = `${this.map['resource-saved'] || 'resource-saved'}  ${resource.entity()}: ${resource.id()}`
+    if (this.config.verbosity > 1) {
+      console.log(line)
+    } else {
+      process.stdout.clearLine()
+      process.stdout.cursorTo(0)
+      process.stdout.write(`Saved: ${this.logs.total}\tErrors: ${this.logs.errors.length}`)
+    }
+  }
+
+  /**
+   * Lets extract some extra data if this is a collection being saved.
+   */
+  logCollectionSaved ({ collection }) {
+    const line = `${this.map['collection-saved'] || 'collection-saved'}  ${collection.path()}/index.json`
     if (this.config.verbosity > 1) {
       console.log(line)
     } else {
