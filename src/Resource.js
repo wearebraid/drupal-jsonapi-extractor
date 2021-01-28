@@ -309,7 +309,7 @@ class Resource {
    * @return {object}
    */
   transformedData () {
-    return this._transformed ? this._transformed : this.raw
+    return this._transformed ? this._transformed : this.data
   }
 }
 
