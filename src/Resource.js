@@ -113,6 +113,12 @@ class Resource {
         }
         this._slugs.push(`/node/${this.id()}`)
       }
+      else if (this.entity() === 'taxonomy_term') {
+        if (this.data.attributes.path && this.data.attributes.path.alias) {
+          this._slugs.push(decodeURIComponent(this.data.attributes.path.alias))
+        }
+        this._slugs.push(`/taxonomy/term/${this.id()}`)
+      }
     }
     return this._slugs
   }
